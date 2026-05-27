@@ -1,8 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
-import { turmasIniciais } from '../data/turmasIniciais';
 import { normalizeNome, cleanNome, genId } from '../utils/calculos';
 
-const KEY = 'dashboard_turmas_v1';
+const KEY = 'dashboard_turmas_v2';
 
 const loadFromStorage = () => {
   try {
@@ -21,7 +20,7 @@ const saveToStorage = (turmas) => {
 export const useTurmas = () => {
   const [turmas, setTurmas] = useState(() => {
     const saved = loadFromStorage();
-    return saved !== null ? saved : turmasIniciais;
+    return saved !== null ? saved : [];
   });
 
   useEffect(() => {
