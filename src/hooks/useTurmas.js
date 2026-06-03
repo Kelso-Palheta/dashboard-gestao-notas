@@ -1,31 +1,54 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { normalizeNome, cleanNome, genId } from '../utils/calculos';
+import { turmasIniciais } from '../data/turmasIniciais';
 
-const KEY = 'dashboard_turmas_v2';
+const LOCAL_KEY = 'dashboard_turmas_v2';
 
-const loadFromStorage = () => {
+const getLocalTurmas = () => {
   try {
-    const raw = localStorage.getItem(KEY);
+    const raw = localStorage.getItem(LOCAL_KEY);
     if (raw !== null) return JSON.parse(raw);
   } catch {}
   return null;
 };
 
-const saveToStorage = (turmas) => {
-  try {
-    localStorage.setItem(KEY, JSON.stringify(turmas));
-  } catch {}
-};
-
-export const useTurmas = () => {
+export const useTurmas = (initialTurmas, persistTurmas) => {
   const [turmas, setTurmas] = useState(() => {
-    const saved = loadFromStorage();
-    return saved !== null ? saved : [];
+    // priority: Firestore (from login) > localStorage > default initial data
+    if (initialTurmas && initialTurmas.length > 0) return initialTurmas;
+    const local = getLocalTurmas();
+    if (local && local.length > 0) return local;
+    return turmasIniciais;
   });
 
+  const isFirstRender = useRef(true);
+
   useEffect(() => {
-    saveToStorage(turmas);
-  }, [turmas]);
+    // skip first render (state already initialized)
+    if (isFirstRender.current) {
+      isFirstRender.current = false;
+      return;
+    }
+    // sync to Firestore + localStorage cache
+    if (persistTurmas) {
+      persistTurmas(turmas);
+    }
+  }, [turmas, persistTurmas]);
+
+  // When initialTurmas loads after login, update state if turmas is still empty/default
+  useEffect(() => {
+    if (initialTurmas && initialTurmas.length > 0) {
+      setTurmas((prev) => {
+        // only override if current state is the default initial data and different from Firestore
+        const prevIds = prev.map(t => t.id).sort().join(',');
+        const cloudIds = initialTurmas.map(t => t.id).sort().join(',');
+        if (prevIds !== cloudIds) {
+          return initialTurmas;
+        }
+        return prev;
+      });
+    }
+  }, [initialTurmas]);
 
   const addTurma = useCallback((nome) => {
     const id = `turma-${nome.trim().replace(/\s+/g, '-').toLowerCase()}-${genId()}`;
@@ -33,8 +56,9 @@ export const useTurmas = () => {
     [1, 2, 3, 4].forEach((b) => {
       bimestres[String(b)] = { atividades: [], notas: {} };
     });
-    setTurmas((prev) => [...prev, { id, nome: nome.trim(), alunos: [], bimestres }]);
-    return id;
+    const nova = { id, nome: nome.trim(), alunos: [], bimestres };
+    setTurmas((prev) => [...prev, nova]);
+    return nova;
   }, []);
 
   const removeTurma = useCallback((turmaId) => {

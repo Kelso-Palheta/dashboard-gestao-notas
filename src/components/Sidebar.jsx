@@ -27,11 +27,13 @@ export const Sidebar = ({
   turmas,
   turmaSelecionada,
   bimestreSelecionado,
+  user,
   onSelectTurma,
   onSelectBimestre,
   onAddTurma,
   onRemoveTurma,
-  onReorderTurmas
+  onReorderTurmas,
+  onLogout
 }) => {
   const [novaTurma, setNovaTurma] = useState('');
   const [confirmRemove, setConfirmRemove] = useState(null);
@@ -249,6 +251,36 @@ export const Sidebar = ({
           </button>
         </div>
       </div>
+
+      {/* User */}
+      {user && (
+        <div className="px-3 py-3 border-t border-ink-600">
+          <div className="flex items-center gap-2.5">
+            {user.photoURL ? (
+              <img src={user.photoURL} alt="" className="w-7 h-7 rounded-full" referrerPolicy="no-referrer" />
+            ) : (
+              <div className="w-7 h-7 rounded-full bg-violet-200 flex items-center justify-center text-violet-500 text-xs font-bold">
+                {user.displayName?.[0] || '?'}
+              </div>
+            )}
+            <div className="flex-1 min-w-0">
+              <p className="text-xs font-medium text-ink-950 truncate">{user.displayName || 'Usuário'}</p>
+              <p className="text-[10px] text-slate-400 truncate">{user.email}</p>
+            </div>
+            <button
+              onClick={onLogout}
+              className="text-slate-400 hover:text-red-500 text-xs transition-colors p-1"
+              title="Sair"
+            >
+              <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+                <polyline points="16 17 21 12 16 7" />
+                <line x1="21" y1="12" x2="9" y2="12" />
+              </svg>
+            </button>
+          </div>
+        </div>
+      )}
     </aside>
   );
 };
