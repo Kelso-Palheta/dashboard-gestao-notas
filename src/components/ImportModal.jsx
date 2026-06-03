@@ -28,7 +28,9 @@ export const ImportModal = ({ turma, onConfirm, onClose }) => {
       } else {
         nomes = await importarViaIA(file);
       }
-      const limpos = [...new Set(nomes.map(cleanNome).filter(Boolean))];
+      const limpos = [...new Set(nomes.map(cleanNome).filter(Boolean))].sort((a, b) =>
+        a.localeCompare(b, 'pt-BR')
+      );
       setNomes(limpos);
       setStage('preview');
     } catch (e) {
