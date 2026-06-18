@@ -53,6 +53,19 @@ export const TurmaView = ({
 }) => {
   const [showImport, setShowImport] = useState(false);
   const [view, setView] = useState('bimestre');
+  const [publicando, setPublicando] = useState(false);
+
+  const handlePublicarNotas = async () => {
+    setPublicando(true);
+    try {
+      await atividadesHook.publicarNotas(turma);
+      alert('Notas publicadas! Os alunos já podem consultar.');
+    } catch (err) {
+      alert('Erro ao publicar notas: ' + err.message);
+    } finally {
+      setPublicando(false);
+    }
+  };
   const stats = statsByBimestre(turma, bimestre);
 
   const handleSetNota = (alunoId, campo, valor) =>
@@ -152,6 +165,16 @@ export const TurmaView = ({
                 : 'bg-white border-ink-600 text-ink-950 hover:bg-ink-700 hover:border-violet-300 btn-3d'}`}
           >
             <span className="font-semibold text-xs uppercase tracking-wider">Atividades</span>
+          </button>
+
+          <button
+            onClick={handlePublicarNotas}
+            disabled={publicando}
+            className="flex items-center gap-2 px-4 py-2 bg-green-500 hover:bg-green-400 disabled:bg-slate-200 disabled:text-slate-400 border border-green-400/30 rounded-xl text-white text-sm transition-all duration-300 hover:scale-[1.03] active:scale-[0.97] btn-3d-primary"
+          >
+            <span className="font-semibold text-xs uppercase tracking-wider">
+              {publicando ? 'Publicando...' : 'Publicar Notas'}
+            </span>
           </button>
 
           <button
