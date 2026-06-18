@@ -108,6 +108,14 @@ export default function AtividadePageAluno() {
           <p className="text-xs text-slate-400 mt-1">Prazo: {prazoStr}</p>
         </div>
 
+        {/* Texto de apoio */}
+        {atividade?.textoBase && estado === 'form' && (
+          <div className="mb-6 bg-slate-50 border border-slate-200 rounded-xl p-4">
+            <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider mb-2">Material de apoio</p>
+            <p className="text-sm text-slate-700 leading-relaxed whitespace-pre-wrap">{atividade.textoBase}</p>
+          </div>
+        )}
+
         {/* Conteúdo dinâmico */}
         {estado === 'form' && (
           <RespostaForm atividade={atividade} onSubmit={handleSubmit} loading={enviando} />

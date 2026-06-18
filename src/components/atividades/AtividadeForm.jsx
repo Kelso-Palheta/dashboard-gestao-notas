@@ -172,6 +172,7 @@ export const AtividadeForm = ({ turmas, onSave, onClose, initialData }) => {
       ? initialData.questoes.map(q => ({ ...q, imagensLocais: [] }))
       : [novaQuestao('discursiva')]
   );
+  const [textoBase, setTextoBase] = useState(initialData?.textoBase || '');
   const [materialFile, setMaterialFile] = useState(null);
   const [materialTextoExtraido, setMaterialTextoExtraido] = useState(initialData?.materialApoio?.textoExtraido || '');
   const [materialNome, setMaterialNome] = useState(initialData?.materialApoio?.nome || '');
@@ -265,6 +266,7 @@ export const AtividadeForm = ({ turmas, onSave, onClose, initialData }) => {
         turmaIds,
         notaMaxima: Math.round(notaTotalMaxima * 100) / 100,
         dataEntrega: new Date(dataEntrega),
+        ...(textoBase.trim() ? { textoBase: textoBase.trim() } : {}),
         questoes: questoesFinais,
         ...(materialApoio ? { materialApoio } : {}),
         alunosPorTurma
@@ -332,7 +334,21 @@ export const AtividadeForm = ({ turmas, onSave, onClose, initialData }) => {
             </div>
           </div>
 
-          {/* Material de apoio */}
+          {/* Texto base para o aluno */}
+          <div>
+            <label className="block text-xs font-semibold text-ink-950 mb-1">
+              Texto de apoio <span className="text-slate-400 font-normal">(visível para o aluno)</span>
+            </label>
+            <textarea
+              value={textoBase}
+              onChange={(e) => setTextoBase(e.target.value)}
+              placeholder="Cole aqui o texto base, trecho do livro, enunciado geral ou qualquer contextualização que o aluno deve ler antes de responder..."
+              rows={5}
+              className="w-full bg-ink-700 border border-ink-600 rounded-xl px-3 py-2.5 text-sm text-ink-950 placeholder-slate-400 outline-none focus:bg-white focus:ring-1 focus:ring-violet-400/50 transition-all resize-y"
+            />
+          </div>
+
+          {/* Material de apoio para a IA */}
           <div className="border border-dashed border-ink-600 rounded-xl p-4">
             <div className="flex items-center justify-between mb-3">
               <div>
