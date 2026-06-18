@@ -3,6 +3,10 @@
     {
       "source": "/api-maritaca",
       "destination": "https://chat.maritaca.ai/api/v1/chat/completions"
+    },
+    {
+      "source": "/(.*)",
+      "destination": "/index.html"
     }
   ]
 }
