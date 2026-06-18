@@ -69,6 +69,7 @@ export const AtividadesList = ({
         onBack={() => setPainelAtividade(null)}
         onDelete={handleDelete}
         useAtividadesHook={useAtividadesHook}
+        turmas={turmas}
       />
     );
   }

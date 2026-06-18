@@ -27,7 +27,7 @@ const StatusBadge = ({ status }) => (
   </span>
 );
 
-export const AtividadePainel = ({ atividade, onBack, onDelete, useAtividadesHook }) => {
+export const AtividadePainel = ({ atividade, onBack, onDelete, useAtividadesHook, turmas = [] }) => {
   const { user } = useAuth();
   const { entregas, corrigindo, overrideNota, corrigirEntrega } = useEntregas(atividade.id);
   const [alunosInfo, setAlunosInfo] = useState({});
@@ -89,6 +89,19 @@ export const AtividadePainel = ({ atividade, onBack, onDelete, useAtividadesHook
   const entregasFiltradas = filtroStatus === 'todos'
     ? entregas
     : entregas.filter(e => e.status === filtroStatus);
+
+  const multiplaTurmas = (atividade.turmaIds?.length || 0) > 1;
+
+  // Ordena por turmaId depois por nome (pt-BR)
+  const alunosSorted = Object.entries(alunosInfo).sort(([, a], [, b]) => {
+    const tc = (a.turmaId || '').localeCompare(b.turmaId || '', 'pt-BR');
+    return tc !== 0 ? tc : (a.nome || '').localeCompare(b.nome || '', 'pt-BR');
+  });
+
+  // Quando há filtro de status, só mostra alunos com entrega naquele status
+  const alunosVisiveis = filtroStatus === 'todos'
+    ? alunosSorted
+    : alunosSorted.filter(([alunoId]) => entregasFiltradas.some(e => e.alunoId === alunoId));
 
   const pendentes = entregas.filter(e => e.status === 'entregue').length;
   const corrigidas = entregas.filter(e => e.status === 'corrigido' || e.status === 'revisado').length;
@@ -162,81 +175,100 @@ export const AtividadePainel = ({ atividade, onBack, onDelete, useAtividadesHook
               </tr>
             </thead>
             <tbody>
-              {alunosInfo && Object.keys(alunosInfo).length === 0 && (
+              {Object.keys(alunosInfo).length === 0 && (
                 <tr>
                   <td colSpan={5} className="text-center py-8 text-slate-400 text-sm">
                     Carregando alunos...
                   </td>
                 </tr>
               )}
-              {Object.entries(alunosInfo).map(([alunoId, info]) => {
-                const entrega = entregasFiltradas.find(e => e.alunoId === alunoId);
-                const nota = entrega?.notaRevisada ?? entrega?.notaFinal;
-
-                return (
-                  <tr key={alunoId} className="border-b border-ink-600 hover:bg-ink-700 transition-colors">
-                    <td className="px-4 py-3">
-                      <span className="font-medium text-ink-950 text-sm">{info.nome}</span>
-                    </td>
-                    <td className="px-4 py-3">
-                      {entrega ? <StatusBadge status={entrega.status} /> : (
-                        <span className="text-xs text-slate-400">Pendente</span>
-                      )}
-                    </td>
-                    <td className="px-4 py-3">
-                      {nota != null ? (
-                        <span className="font-mono text-sm text-ink-950 tabular-nums">
-                          {nota.toFixed(2).replace('.', ',')}
-                          <span className="text-slate-400 text-xs">/{atividade.notaMaxima.toFixed(1).replace('.', ',')}</span>
-                        </span>
-                      ) : (
-                        <span className="text-slate-400 text-xs">—</span>
-                      )}
-                    </td>
-                    <td className="px-4 py-3 text-xs text-slate-400">
-                      {entrega?.submittedAt?.toDate ? entrega.submittedAt.toDate().toLocaleDateString('pt-BR', {
-                        day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit'
-                      }) : '—'}
-                    </td>
-                    <td className="px-4 py-3 text-right">
-                      <div className="flex items-center justify-end gap-1.5">
-                        {entrega?.status === 'entregue' && (
-                          <button
-                            onClick={() => handleCorrigir(entrega.id)}
-                            disabled={corrigindo === entrega.id}
-                            className="px-2 py-1 bg-violet-50 hover:bg-violet-100 text-violet-500 rounded text-[10px] font-semibold transition-all disabled:opacity-50"
-                          >
-                            {corrigindo === entrega.id ? 'Corrigindo...' : 'Corrigir IA'}
-                          </button>
+              {(() => {
+                if (alunosVisiveis.length === 0 && Object.keys(alunosInfo).length > 0) {
+                  return (
+                    <tr>
+                      <td colSpan={5} className="text-center py-8 text-slate-400 text-sm">
+                        Nenhuma entrega com este status.
+                      </td>
+                    </tr>
+                  );
+                }
+                const rows = [];
+                let lastTurmaId = null;
+                for (const [alunoId, info] of alunosVisiveis) {
+                  if (multiplaTurmas && info.turmaId !== lastTurmaId) {
+                    lastTurmaId = info.turmaId;
+                    const turmaNome = turmas.find(t => t.id === info.turmaId)?.nome || info.turmaId;
+                    rows.push(
+                      <tr key={`h-${info.turmaId}`} className="bg-slate-50 border-b border-ink-600">
+                        <td colSpan={5} className="px-4 py-1.5">
+                          <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                            Turma {turmaNome}
+                          </span>
+                        </td>
+                      </tr>
+                    );
+                  }
+                  const entrega = entregasFiltradas.find(e => e.alunoId === alunoId);
+                  const nota = entrega?.notaRevisada ?? entrega?.notaFinal;
+                  rows.push(
+                    <tr key={alunoId} className="border-b border-ink-600 hover:bg-ink-700 transition-colors">
+                      <td className="px-4 py-3">
+                        <span className="font-medium text-ink-950 text-sm">{info.nome}</span>
+                      </td>
+                      <td className="px-4 py-3">
+                        {entrega ? <StatusBadge status={entrega.status} /> : (
+                          <span className="text-xs text-slate-400">Pendente</span>
                         )}
-                        {entrega?.status === 'erro_correcao' && (
-                          <button
-                            onClick={() => handleCorrigir(entrega.id)}
-                            className="px-2 py-1 bg-red-50 hover:bg-red-100 text-red-500 rounded text-[10px] font-semibold transition-all"
-                          >
-                            Re-corrigir
-                          </button>
+                      </td>
+                      <td className="px-4 py-3">
+                        {nota != null ? (
+                          <span className="font-mono text-sm text-ink-950 tabular-nums">
+                            {nota.toFixed(2).replace('.', ',')}
+                            <span className="text-slate-400 text-xs">/{atividade.notaMaxima.toFixed(1).replace('.', ',')}</span>
+                          </span>
+                        ) : (
+                          <span className="text-slate-400 text-xs">—</span>
                         )}
-                        {entrega && (
-                          <button
-                            onClick={() => setSelectedEntrega(entrega)}
-                            className="px-2 py-1 bg-ink-700 hover:bg-ink-600 text-ink-950 rounded text-[10px] font-medium transition-all"
-                          >
-                            Ver
-                          </button>
-                        )}
-                      </div>
-                    </td>
-                  </tr>
-                );
-              })}
-              {alunosInfo && Object.keys(alunosInfo).length > 0 && entregasFiltradas.length === 0 && filtroStatus !== 'todos' && (
-                <tr>
-                  <td colSpan={5} className="text-center py-8 text-slate-400 text-sm">
-                    Nenhuma entrega com este status.
-                  </td>
-                </tr>
-              )}
+                      </td>
+                      <td className="px-4 py-3 text-xs text-slate-400">
+                        {entrega?.submittedAt?.toDate ? entrega.submittedAt.toDate().toLocaleDateString('pt-BR', {
+                          day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit'
+                        }) : '—'}
+                      </td>
+                      <td className="px-4 py-3 text-right">
+                        <div className="flex items-center justify-end gap-1.5">
+                          {entrega?.status === 'entregue' && (
+                            <button
+                              onClick={() => handleCorrigir(entrega.id)}
+                              disabled={corrigindo === entrega.id}
+                              className="px-2 py-1 bg-violet-50 hover:bg-violet-100 text-violet-500 rounded text-[10px] font-semibold transition-all disabled:opacity-50"
+                            >
+                              {corrigindo === entrega.id ? 'Corrigindo...' : 'Corrigir IA'}
+                            </button>
+                          )}
+                          {entrega?.status === 'erro_correcao' && (
+                            <button
+                              onClick={() => handleCorrigir(entrega.id)}
+                              className="px-2 py-1 bg-red-50 hover:bg-red-100 text-red-500 rounded text-[10px] font-semibold transition-all"
+                            >
+                              Re-corrigir
+                            </button>
+                          )}
+                          {entrega && (
+                            <button
+                              onClick={() => setSelectedEntrega(entrega)}
+                              className="px-2 py-1 bg-ink-700 hover:bg-ink-600 text-ink-950 rounded text-[10px] font-medium transition-all"
+                            >
+                              Ver
+                            </button>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                }
+                return rows;
+              })()}
             </tbody>
           </table>
         </div>
