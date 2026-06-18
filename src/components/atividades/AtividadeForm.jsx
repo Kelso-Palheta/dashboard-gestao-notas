@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { extractTextFromPDF } from '../../utils/pdfExtractor';
-import { uploadFile } from '../../utils/storageUtils';
+import { imageToBase64 } from '../../utils/storageUtils';
 
 const BIMESTRES = [1, 2, 3, 4];
 const genId = () => `${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 6)}`;
@@ -231,16 +231,14 @@ export const AtividadeForm = ({ turmas, onSave, onClose, initialData }) => {
     try {
       const atvId = initialData?.id || genAtvId();
 
-      // Upload imagens de cada questão
+      // Converter imagens para base64 (sem Firebase Storage)
       const questoesFinais = await Promise.all(questoes.map(async (q) => {
         const imagens = [...(q.imagens || [])];
 
         if (q.imagensLocais?.length > 0) {
-          for (let i = 0; i < q.imagensLocais.length; i++) {
-            const { file } = q.imagensLocais[i];
-            const path = `atividades/${atvId}/questoes/${q.id}/img_${i}_${Date.now()}`;
-            const { url } = await uploadFile(file, path);
-            imagens.push({ url, path });
+          for (const { file } of q.imagensLocais) {
+            const base64 = await imageToBase64(file);
+            imagens.push({ base64 });
           }
         }
 
@@ -248,14 +246,10 @@ export const AtividadeForm = ({ turmas, onSave, onClose, initialData }) => {
         return { ...questaoFinal, imagens };
       }));
 
-      // Upload PDF se houver
+      // PDF: armazena só o texto extraído (sem upload de arquivo)
       let materialApoio = initialData?.materialApoio || null;
-      if (materialFile && materialTextoExtraido) {
-        const path = `atividades/${atvId}/material/${materialNome}`;
-        const { url } = await uploadFile(materialFile, path);
-        materialApoio = { nome: materialNome, url, textoExtraido: materialTextoExtraido };
-      } else if (materialTextoExtraido && !materialFile) {
-        materialApoio = { ...(materialApoio || {}), textoExtraido: materialTextoExtraido, nome: materialNome };
+      if (materialTextoExtraido) {
+        materialApoio = { nome: materialNome, textoExtraido: materialTextoExtraido };
       }
 
       const alunosPorTurma = {};

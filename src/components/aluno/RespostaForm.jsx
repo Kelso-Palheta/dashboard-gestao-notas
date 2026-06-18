@@ -16,7 +16,7 @@ function QuestaoDiscursiva({ numero, questao, resposta, onChange }) {
       {questao.imagens?.length > 0 && (
         <div className="flex flex-wrap gap-2 mb-3">
           {questao.imagens.map((img, i) => (
-            <img key={i} src={img.url} alt={`Imagem ${i + 1}`} className="max-h-48 rounded-lg border border-ink-600 object-contain" />
+            <img key={i} src={img.url || img.base64} alt={`Imagem ${i + 1}`} className="max-h-48 rounded-lg border border-ink-600 object-contain" />
           ))}
         </div>
       )}
@@ -50,7 +50,7 @@ function QuestaoObjetiva({ numero, questao, resposta, onChange }) {
       {questao.imagens?.length > 0 && (
         <div className="flex flex-wrap gap-2 mb-3">
           {questao.imagens.map((img, i) => (
-            <img key={i} src={img.url} alt={`Imagem ${i + 1}`} className="max-h-48 rounded-lg border border-ink-600 object-contain" />
+            <img key={i} src={img.url || img.base64} alt={`Imagem ${i + 1}`} className="max-h-48 rounded-lg border border-ink-600 object-contain" />
           ))}
         </div>
       )}
