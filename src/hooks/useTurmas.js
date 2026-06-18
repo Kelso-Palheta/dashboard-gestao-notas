@@ -142,5 +142,30 @@ export const useTurmas = (initialTurmas, persistTurmas) => {
     );
   }, []);
 
-  return { turmas, setTurmas, addTurma, removeTurma, addAlunos, removeAluno, removeAlunos, setRecuperacao };
+  const addAlunoManual = useCallback((turmaId, dados) => {
+    const novoAluno = {
+      id: `al_${genId()}`,
+      nome: cleanNome(dados.nome),
+      ...(dados.dataNascimento ? { dataNascimento: dados.dataNascimento } : {})
+    };
+    setTurmas((prev) =>
+      prev.map((t) => {
+        if (t.id !== turmaId) return t;
+        if (t.alunos.some((a) => normalizeNome(a.nome) === normalizeNome(dados.nome))) return t;
+        return { ...t, alunos: [...t.alunos, novoAluno] };
+      })
+    );
+    return novoAluno;
+  }, []);
+
+  const updateAluno = useCallback((turmaId, alunoId, updates) => {
+    setTurmas((prev) =>
+      prev.map((t) => {
+        if (t.id !== turmaId) return t;
+        return { ...t, alunos: t.alunos.map((al) => al.id === alunoId ? { ...al, ...updates } : al) };
+      })
+    );
+  }, []);
+
+  return { turmas, setTurmas, addTurma, removeTurma, addAlunos, addAlunoManual, removeAluno, removeAlunos, setRecuperacao, updateAluno };
 };

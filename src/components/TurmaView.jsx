@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { TabelaNotas } from './TabelaNotas';
 import { ImportModal } from './ImportModal';
 import { MapaAnual } from './MapaAnual';
+import { AtividadesList } from './atividades/AtividadesList';
 import { calcTotal, fmt, round2, somaMaxAtv, temNota, statusColor } from '../utils/calculos';
 
 const statsByBimestre = (turma, bimestre) => {
@@ -33,7 +34,9 @@ const StatChip = ({ label, value, color }) => (
 
 export const TurmaView = ({
   turma,
+  turmas,
   bimestre,
+  user,
   onSetNota,
   onAddAtv,
   onRemoveAtv,
@@ -43,7 +46,10 @@ export const TurmaView = ({
   onUpdateConfig,
   onSetRecuperacao,
   onClearAtividadesNota,
-  onClearAtividadesTurma
+  onClearAtividadesTurma,
+  onAddAlunoManual,
+  onUpdateAluno,
+  atividadesHook
 }) => {
   const [showImport, setShowImport] = useState(false);
   const [view, setView] = useState('bimestre');
@@ -58,6 +64,12 @@ export const TurmaView = ({
   const handleRemoveAtv = (atvId) =>
     onRemoveAtv(turma.id, bimestre, atvId);
 
+  const handleAddAtvForTurma = (turmaId, b, nome, max) =>
+    onAddAtv(turmaId, b, nome, max);
+
+  const handleRemoveAtvForTurma = (turmaId, b, atvId) =>
+    onRemoveAtv(turmaId, b, atvId);
+
   return (
     <div className="flex-1 flex flex-col overflow-hidden">
       {/* Header */}
@@ -66,13 +78,19 @@ export const TurmaView = ({
           <div className="flex items-center gap-3">
             <h1 className="text-2xl font-bold text-ink-950 tracking-tight">Turma {turma.nome}</h1>
             <span className="text-xs text-slate-400 font-mono mt-1">({turma.alunos.length} alunos)</span>
-            {view === 'bimestre' ? (
+            {view === 'bimestre' && (
               <span className="px-2.5 py-0.5 bg-violet-50 border border-violet-200 rounded-full text-[10px] font-bold uppercase tracking-wider text-violet-500">
-                {bimestre}&ordm; Bimestre
+                {bimestre}º Bimestre
               </span>
-            ) : (
+            )}
+            {view === 'anual' && (
               <span className="px-2.5 py-0.5 bg-violet-50 border border-violet-200 rounded-full text-[10px] font-bold uppercase tracking-wider text-violet-500">
                 Mapa Anual
+              </span>
+            )}
+            {view === 'atividades' && (
+              <span className="px-2.5 py-0.5 bg-violet-50 border border-violet-200 rounded-full text-[10px] font-bold uppercase tracking-wider text-violet-500">
+                Atividades
               </span>
             )}
           </div>
@@ -107,15 +125,33 @@ export const TurmaView = ({
 
         <div className="flex items-center gap-2">
           <button
-            onClick={() => setView(view === 'bimestre' ? 'anual' : 'bimestre')}
+            onClick={() => setView('bimestre')}
+            className={`flex items-center gap-2 px-4 py-2 border rounded-xl text-sm transition-all duration-300 hover:scale-[1.03] active:scale-[0.97]
+              ${view === 'bimestre'
+                ? 'bg-violet-500 border-violet-400/40 text-white hover:bg-violet-400 btn-3d-primary'
+                : 'bg-white border-ink-600 text-ink-950 hover:bg-ink-700 hover:border-violet-300 btn-3d'}`}
+          >
+            <span className="font-semibold text-xs uppercase tracking-wider">Bimestre</span>
+          </button>
+
+          <button
+            onClick={() => setView('anual')}
             className={`flex items-center gap-2 px-4 py-2 border rounded-xl text-sm transition-all duration-300 hover:scale-[1.03] active:scale-[0.97]
               ${view === 'anual'
                 ? 'bg-violet-500 border-violet-400/40 text-white hover:bg-violet-400 btn-3d-primary'
                 : 'bg-white border-ink-600 text-ink-950 hover:bg-ink-700 hover:border-violet-300 btn-3d'}`}
           >
-            <span className="font-semibold text-xs uppercase tracking-wider">
-              {view === 'anual' ? 'Ver Bimestre' : 'Mapa Anual'}
-            </span>
+            <span className="font-semibold text-xs uppercase tracking-wider">Mapa Anual</span>
+          </button>
+
+          <button
+            onClick={() => setView('atividades')}
+            className={`flex items-center gap-2 px-4 py-2 border rounded-xl text-sm transition-all duration-300 hover:scale-[1.03] active:scale-[0.97]
+              ${view === 'atividades'
+                ? 'bg-violet-500 border-violet-400/40 text-white hover:bg-violet-400 btn-3d-primary'
+                : 'bg-white border-ink-600 text-ink-950 hover:bg-ink-700 hover:border-violet-300 btn-3d'}`}
+          >
+            <span className="font-semibold text-xs uppercase tracking-wider">Atividades</span>
           </button>
 
           <button
@@ -145,6 +181,15 @@ export const TurmaView = ({
             turma={turma}
             onSetRecuperacao={onSetRecuperacao}
           />
+        ) : view === 'atividades' ? (
+          <AtividadesList
+            turma={turma}
+            turmas={turmas}
+            bimestre={bimestre}
+            useAtividadesHook={atividadesHook}
+            onAddAtv={handleAddAtvForTurma}
+            onRemoveAtv={handleRemoveAtvForTurma}
+          />
         ) : (
           <TabelaNotas
             turma={turma}
@@ -154,6 +199,8 @@ export const TurmaView = ({
             onRemoveAtv={handleRemoveAtv}
             onRemoveAluno={onRemoveAluno}
             onRemoveAlunos={onRemoveAlunos}
+            onAddAlunoManual={(dados) => onAddAlunoManual(turma.id, dados)}
+            onUpdateAluno={onUpdateAluno}
             onUpdateConfig={(cfg) => onUpdateConfig(turma.id, bimestre, cfg)}
             onClearAtividadesNota={onClearAtividadesNota}
             onClearAtividadesTurma={onClearAtividadesTurma}

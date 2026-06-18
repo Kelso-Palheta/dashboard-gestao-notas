@@ -1,0 +1,46 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Dados do professor — existente
+    match /users/{userId}/turmas/data {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+    }
+
+    // Atividades — leitura pública (enunciado visível ao aluno); escrita só professor
+    // Proteção do gabarito é feita no client via getAtividadePublica() que remove o campo
+    match /atividades/{activityId} {
+      allow read: if true;
+      allow write: if request.auth != null && (
+        !exists(/databases/$(database)/documents/atividades/$(activityId)) ||
+        resource.data.professorId == request.auth.uid
+      );
+
+      // Tokens — leitura pública; escrita só professor
+      match /tokens/{alunoId} {
+        allow read: if true;
+        allow write: if request.auth != null;
+      }
+    }
+
+    // Entregas — aluno cria; professor lê e atualiza
+    match /entregas/{entregaId} {
+      allow create: if true;
+      allow read: if true;
+      allow update: if request.auth != null;
+      allow delete: if request.auth != null;
+    }
+
+    // Login do aluno — leitura pública para validação
+    match /alunoLogin/{loginKey} {
+      allow read: if true;
+      allow write: if request.auth != null;
+    }
+
+    // Notas publicadas — leitura pública (ID não é adivinhável)
+    match /notasAluno/{recordId} {
+      allow read: if true;
+      allow write: if request.auth != null;
+    }
+  }
+}

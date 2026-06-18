@@ -8,6 +8,46 @@ const STATUS_STYLES = {
   bad:  'text-red-600 bg-red-50 border border-red-400/20 font-semibold'
 };
 
+const AddAlunoForm = ({ onAdd }) => {
+  const [nome, setNome] = useState('');
+  const [data, setData] = useState('');
+
+  const submit = () => {
+    if (!nome.trim()) return;
+    const dataNascimento = data.replace(/\D/g, '').slice(0, 4);
+    onAdd({ nome: nome.trim(), ...(dataNascimento.length === 4 ? { dataNascimento } : {}) });
+    setNome('');
+    setData('');
+  };
+
+  return (
+    <div className="flex items-center gap-3 mt-3 pt-3 border-t border-slate-600/30">
+      <input
+        value={nome}
+        onChange={(e) => setNome(e.target.value)}
+        onKeyDown={(e) => e.key === 'Enter' && submit()}
+        placeholder="Nome do aluno"
+        className="flex-1 bg-ink-700 border border-ink-600 rounded-lg px-3.5 py-2 text-sm text-ink-950 placeholder-slate-400 outline-none focus:bg-white focus:ring-1 focus:ring-violet-400/50 transition-all duration-300 input-glow"
+      />
+      <input
+        value={data}
+        onChange={(e) => setData(e.target.value.replace(/\D/g, '').slice(0, 4))}
+        onKeyDown={(e) => e.key === 'Enter' && submit()}
+        placeholder="ddMM (opcional)"
+        maxLength={4}
+        className="w-36 bg-ink-700 border border-ink-600 rounded-lg px-3.5 py-2 text-sm text-ink-950 placeholder-slate-400 outline-none focus:bg-white focus:ring-1 focus:ring-violet-400/50 transition-all duration-300 input-glow font-mono"
+      />
+      <button
+        onClick={submit}
+        disabled={!nome.trim()}
+        className="px-4 py-2 bg-violet-500 hover:bg-violet-400 disabled:opacity-40 disabled:cursor-not-allowed rounded-lg text-white text-sm font-medium transition-all duration-300 btn-3d-primary whitespace-nowrap"
+      >
+        + Aluno
+      </button>
+    </div>
+  );
+};
+
 const AddAtvForm = ({ onAdd, somaAtual, maxAtv }) => {
   const [nome, setNome] = useState('');
   const [max, setMax] = useState('');
@@ -55,10 +95,12 @@ export const TabelaNotas = ({
   onRemoveAlunos,
   onUpdateConfig,
   onClearAtividadesNota,
-  onClearAtividadesTurma
+  onClearAtividadesTurma,
+  onUpdateAluno
 }) => {
   const [selectedIds, setSelectedIds] = useState([]);
   const [showConfig, setShowConfig] = useState(false);
+  const [editingBirthday, setEditingBirthday] = useState(null);
 
   const bData = turma.bimestres[String(bimestre)] || { atividades: [], notas: {}, config: {} };
   const { atividades, notas, config = {} } = bData;
@@ -310,7 +352,37 @@ export const TabelaNotas = ({
                   </td>
                   <td className="px-3 py-1.5 text-slate-400 font-mono text-xs">{idx + 1}</td>
                   <td className="px-3 py-1.5 text-slate-50 font-medium">
-                    {titleCase(al.nome)}
+                    <div className="flex items-center gap-2">
+                      <span>{titleCase(al.nome)}</span>
+                      {editingBirthday === al.id ? (
+                        <input
+                          autoFocus
+                          type="text"
+                          maxLength={4}
+                          placeholder="ddMM"
+                          defaultValue={al.dataNascimento || ''}
+                          className="w-16 px-1.5 py-0.5 text-xs font-mono bg-slate-700 border border-violet-400 rounded text-white focus:outline-none"
+                          onBlur={(e) => {
+                            const v = e.target.value.replace(/\D/g, '').slice(0, 4);
+                            if (v.length === 4 && onUpdateAluno) onUpdateAluno(turma.id, al.id, { dataNascimento: v });
+                            setEditingBirthday(null);
+                          }}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter') e.target.blur();
+                            if (e.key === 'Escape') setEditingBirthday(null);
+                          }}
+                        />
+                      ) : (
+                        <button
+                          onClick={() => setEditingBirthday(al.id)}
+                          className="text-[10px] font-mono transition-colors px-1 rounded"
+                          title="Data de nascimento para login do aluno (ddMM)"
+                          style={{ color: al.dataNascimento ? '#6b7280' : '#7c3aed' }}
+                        >
+                          {al.dataNascimento || '+ data'}
+                        </button>
+                      )}
+                    </div>
                   </td>
                   <td className="px-2 py-1">
                     <NumCell
@@ -363,6 +435,9 @@ export const TabelaNotas = ({
           </tbody>
         </table>
       </div>
+
+      {/* Adicionar aluno manualmente */}
+      {onAddAlunoManual && <AddAlunoForm onAdd={onAddAlunoManual} />}
 
       {/* Adicionar atividade */}
       <AddAtvForm onAdd={onAddAtv} somaAtual={somaMaxima} maxAtv={atvMax} />

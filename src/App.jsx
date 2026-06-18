@@ -3,13 +3,16 @@ import { Sidebar } from './components/Sidebar';
 import { TurmaView } from './components/TurmaView';
 import { LoginScreen } from './components/LoginScreen';
 import { useTurmas } from './hooks/useTurmas';
+import { syncAlunoLogin } from './firebase/firestore-atividades';
 import { useNotas } from './hooks/useNotas';
+import { useAtividades } from './hooks/useAtividades';
 import { useAuth } from './context/AuthContext';
 
 export default function App() {
   const { user, loading, initialTurmas, login, logout, persistTurmas } = useAuth();
-  const { turmas, setTurmas, addTurma, removeTurma, addAlunos, removeAluno, removeAlunos, setRecuperacao } = useTurmas(initialTurmas, persistTurmas);
+  const { turmas, setTurmas, addTurma, removeTurma, addAlunos, addAlunoManual, removeAluno, removeAlunos, setRecuperacao, updateAluno } = useTurmas(initialTurmas, persistTurmas);
   const { setNota, addAtividade, removeAtividade, updateConfig, clearAtividadesNota, clearAtividadesTurma } = useNotas(setTurmas);
+  const atividadesHook = useAtividades(user?.uid);
   const [turmaSelecionada, setTurmaSelecionada] = useState(null);
   const [bimestre, setBimestre] = useState(1);
 
@@ -22,6 +25,22 @@ export default function App() {
     setTurmaSelecionada(nova);
   };
 
+  const handleAddAlunoManual = async (turmaId, dados) => {
+    const novoAluno = addAlunoManual(turmaId, dados);
+    if (dados.dataNascimento && user) {
+      await syncAlunoLogin(user.uid, novoAluno, turmaId);
+    }
+  };
+
+  const handleUpdateAluno = async (turmaId, alunoId, updates) => {
+    updateAluno(turmaId, alunoId, updates);
+    if (updates.dataNascimento && user) {
+      const turma = turmas.find((t) => t.id === turmaId);
+      const aluno = turma?.alunos.find((a) => a.id === alunoId);
+      if (aluno) await syncAlunoLogin(user.uid, { ...aluno, ...updates }, turmaId);
+    }
+  };
+
   const handleRemoveTurma = (id) => {
     removeTurma(id);
     if (turmaSelecionada?.id === id) {
@@ -30,7 +49,6 @@ export default function App() {
     }
   };
 
-  // Loading state
   if (loading) {
     return (
       <div className="h-full flex items-center justify-center bg-white">
@@ -42,12 +60,10 @@ export default function App() {
     );
   }
 
-  // Not authenticated
   if (!user) {
     return <LoginScreen onLogin={login} />;
   }
 
-  // Authenticated app
   return (
     <div className="flex h-full overflow-hidden bg-white">
       <Sidebar
@@ -68,7 +84,9 @@ export default function App() {
           <TurmaView
             key={`${turmaAtual.id}-${bimestre}`}
             turma={turmaAtual}
+            turmas={turmas}
             bimestre={bimestre}
+            user={user}
             onSetNota={setNota}
             onAddAtv={addAtividade}
             onRemoveAtv={removeAtividade}
@@ -79,6 +97,9 @@ export default function App() {
             onSetRecuperacao={setRecuperacao}
             onClearAtividadesNota={clearAtividadesNota}
             onClearAtividadesTurma={clearAtividadesTurma}
+            onAddAlunoManual={handleAddAlunoManual}
+            onUpdateAluno={handleUpdateAluno}
+            atividadesHook={atividadesHook}
           />
         ) : (
           <div className="flex-1 flex items-center justify-center">
