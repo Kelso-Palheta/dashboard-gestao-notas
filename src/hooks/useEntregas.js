@@ -1,34 +1,25 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { db } from '../firebase/config';
 import { collection, query, where, onSnapshot, doc, setDoc, serverTimestamp } from 'firebase/firestore';
 import { corrigirAtividade } from '../utils/correcaoIA';
 
 export function useEntregas(activityId) {
   const [entregas, setEntregas] = useState([]);
-  const [corrigindo, setCorrigindo] = useState(null); // entregaId sendo corrigida
+  const [corrigindo, setCorrigindo] = useState(null);
 
   useEffect(() => {
     if (!activityId) return;
-
-    const q = query(
-      collection(db, 'entregas'),
-      where('activityId', '==', activityId)
-    );
-
+    const q = query(collection(db, 'entregas'), where('activityId', '==', activityId));
     const unsub = onSnapshot(q, (snap) => {
-      const list = snap.docs.map(d => ({ ...d.data(), id: d.id }));
-      setEntregas(list);
+      setEntregas(snap.docs.map(d => ({ ...d.data(), id: d.id })));
     });
-
     return () => unsub();
   }, [activityId]);
 
   const overrideNota = useCallback(async (entregaId, novaNota, professorId) => {
     const entrega = entregas.find(e => e.id === entregaId);
     if (!entrega) return;
-
-    const ref = doc(db, 'entregas', entregaId);
-    await setDoc(ref, {
+    await setDoc(doc(db, 'entregas', entregaId), {
       notaRevisada: Number(novaNota),
       notaAnteriorRevisao: entrega.notaRevisada ?? entrega.notaFinal ?? null,
       revisadaPorId: professorId,
@@ -37,44 +28,53 @@ export function useEntregas(activityId) {
     }, { merge: true });
   }, [entregas]);
 
-  /**
-   * Aciona a correção por IA para uma entrega.
-   * Roda no client do PROFESSOR — o aluno nunca acessa essa função.
-   */
   const corrigirEntrega = useCallback(async (entregaId, atividade) => {
     const entrega = entregas.find(e => e.id === entregaId);
     if (!entrega || !atividade) return;
 
     setCorrigindo(entregaId);
     try {
-      const resultado = await corrigirAtividade({
-        enunciado: atividade.enunciado,
-        gabarito: atividade.gabarito,
-        respostaTexto: entrega.respostaTexto || '',
-        notaMaxima: atividade.notaMaxima || 10,
-        imagens: []
-      });
+      let resultado;
 
-      const ref = doc(db, 'entregas', entregaId);
-      await setDoc(ref, {
-        notaIA: resultado.notaIA,
-        notaFinal: resultado.notaFinal,
-        feedback: resultado.feedback,
-        criterios: resultado.criterios,
-        modeloIA: resultado.modelo,
-        corrigidoEm: serverTimestamp(),
-        status: 'corrigido'
-      }, { merge: true });
+      if (atividade.questoes?.length > 0) {
+        resultado = await corrigirAtividade({
+          questoes: atividade.questoes,
+          respostas: entrega.respostas || {},
+          materialTexto: atividade.materialApoio?.textoExtraido || ''
+        });
+
+        await setDoc(doc(db, 'entregas', entregaId), {
+          resultados: resultado.resultados,
+          notaFinal: resultado.notaFinal,
+          modeloIA: resultado.modelo,
+          corrigidoEm: serverTimestamp(),
+          status: 'corrigido'
+        }, { merge: true });
+      } else {
+        // Legado: atividade sem questoes (enunciado/gabarito)
+        resultado = await corrigirAtividade({
+          enunciado: atividade.enunciado,
+          gabarito: atividade.gabarito,
+          respostaTexto: entrega.respostaTexto || '',
+          notaMaxima: atividade.notaMaxima || 10,
+          imagens: []
+        });
+
+        await setDoc(doc(db, 'entregas', entregaId), {
+          notaIA: resultado.notaIA,
+          notaFinal: resultado.notaFinal,
+          feedback: resultado.feedback,
+          criterios: resultado.criterios,
+          modeloIA: resultado.modelo,
+          corrigidoEm: serverTimestamp(),
+          status: 'corrigido'
+        }, { merge: true });
+      }
 
       return resultado;
     } catch (err) {
       console.error('Erro na correção por IA:', err);
-
-      const ref = doc(db, 'entregas', entregaId);
-      await setDoc(ref, {
-        status: 'erro_correcao'
-      }, { merge: true });
-
+      await setDoc(doc(db, 'entregas', entregaId), { status: 'erro_correcao' }, { merge: true });
       throw err;
     } finally {
       setCorrigindo(null);

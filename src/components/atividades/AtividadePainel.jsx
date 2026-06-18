@@ -246,7 +246,7 @@ export const AtividadePainel = ({ atividade, onBack, onDelete, useAtividadesHook
       {selectedEntrega && (
         <EntregaDrawer
           entrega={selectedEntrega}
-          notaMaxima={atividade.notaMaxima}
+          atividade={atividade}
           alunoNome={alunosInfo[selectedEntrega.alunoId]?.nome || 'Aluno'}
           onOverride={(novaNota) => overrideNota(selectedEntrega.id, novaNota, user.uid)}
           onCorrigir={() => handleCorrigir(selectedEntrega.id)}

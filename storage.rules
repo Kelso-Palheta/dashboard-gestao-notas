@@ -1,0 +1,12 @@
+rules_version = '2';
+
+service firebase.storage {
+  match /b/{bucket}/o {
+    // Imagens e PDFs de atividades: alunos podem ler (para ver imagens via URL),
+    // só professores autenticados podem escrever
+    match /atividades/{allPaths=**} {
+      allow read: if true;
+      allow write: if request.auth != null;
+    }
+  }
+}

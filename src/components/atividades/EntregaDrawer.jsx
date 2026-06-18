@@ -1,10 +1,13 @@
 import { useState } from 'react';
 import { fmt } from '../../utils/calculos';
 
-export const EntregaDrawer = ({ entrega, notaMaxima, alunoNome, onOverride, onCorrigir, onClose }) => {
+export const EntregaDrawer = ({ entrega, atividade, alunoNome, onOverride, onCorrigir, onClose }) => {
   const [editando, setEditando] = useState(false);
   const [novaNota, setNovaNota] = useState('');
+  const notaMaxima = atividade?.notaMaxima || 10;
   const notaAtual = entrega.notaRevisada ?? entrega.notaFinal;
+  const questoes = atividade?.questoes?.length > 0 ? atividade.questoes : null;
+  const resultados = entrega.resultados;
 
   const handleSaveNota = () => {
     const val = Number(novaNota.replace(',', '.'));
@@ -52,20 +55,16 @@ export const EntregaDrawer = ({ entrega, notaMaxima, alunoNome, onOverride, onCo
                   value={novaNota}
                   onChange={(e) => setNovaNota(e.target.value)}
                   placeholder="0,0"
-                  className="flex-1 bg-white border border-ink-600 rounded-lg px-3 py-2 text-sm text-ink-950 outline-none focus:ring-1 focus:ring-violet-400/50 input-glow"
+                  className="flex-1 bg-white border border-ink-600 rounded-lg px-3 py-2 text-sm text-ink-950 outline-none focus:ring-1 focus:ring-violet-400/50"
                   autoFocus
                   onKeyDown={(e) => e.key === 'Enter' && handleSaveNota()}
                 />
-                <button
-                  onClick={handleSaveNota}
-                  className="px-3 py-2 bg-violet-500 hover:bg-violet-400 rounded-lg text-white text-xs font-semibold transition-all"
-                >
+                <button onClick={handleSaveNota}
+                  className="px-3 py-2 bg-violet-500 hover:bg-violet-400 rounded-lg text-white text-xs font-semibold transition-all">
                   OK
                 </button>
-                <button
-                  onClick={() => { setEditando(false); setNovaNota(''); }}
-                  className="px-3 py-2 bg-ink-700 hover:bg-ink-600 rounded-lg text-xs text-slate-400 transition-all"
-                >
+                <button onClick={() => { setEditando(false); setNovaNota(''); }}
+                  className="px-3 py-2 bg-ink-700 hover:bg-ink-600 rounded-lg text-xs text-slate-400 transition-all">
                   Cancelar
                 </button>
               </div>
@@ -75,10 +74,7 @@ export const EntregaDrawer = ({ entrega, notaMaxima, alunoNome, onOverride, onCo
                   {notaAtual != null ? fmt(notaAtual) : '—'}
                 </span>
                 <button
-                  onClick={() => {
-                    setNovaNota(notaAtual != null ? notaAtual.toString().replace('.', ',') : '');
-                    setEditando(true);
-                  }}
+                  onClick={() => { setNovaNota(notaAtual != null ? notaAtual.toString().replace('.', ',') : ''); setEditando(true); }}
                   className="text-xs text-violet-400 hover:text-violet-500 font-medium ml-2"
                 >
                   {notaAtual != null ? 'Alterar' : 'Atribuir'}
@@ -88,65 +84,117 @@ export const EntregaDrawer = ({ entrega, notaMaxima, alunoNome, onOverride, onCo
 
             {entrega.notaIA != null && (
               <p className="text-[10px] text-slate-400 mt-2">
-                Nota IA: {entrega.notaIA.toFixed(1).replace('.', ',')}/10
+                Nota IA: {entrega.notaIA.toFixed(1).replace('.', ',')}
                 {entrega.notaRevisada != null && ` → Revisada: ${entrega.notaRevisada.toFixed(2).replace('.', ',')}`}
               </p>
             )}
             {entrega.revisadaPorId && (
-              <p className="text-[10px] text-amber-500 mt-1">
-                Nota revisada manualmente pelo professor
-              </p>
+              <p className="text-[10px] text-amber-500 mt-1">Nota revisada manualmente pelo professor</p>
+            )}
+            {entrega.modeloIA && (
+              <p className="text-[10px] text-slate-400 mt-1">Modelo: {entrega.modeloIA}</p>
             )}
           </div>
 
-          {/* Ações de correção */}
+          {/* Ação de correção */}
           {(entrega.status === 'entregue' || entrega.status === 'erro_correcao') && (
-            <button
-              onClick={onCorrigir}
-              className="w-full py-2.5 bg-violet-500 hover:bg-violet-400 rounded-xl text-white text-sm font-semibold transition-all btn-3d-primary"
-            >
+            <button onClick={onCorrigir}
+              className="w-full py-2.5 bg-violet-500 hover:bg-violet-400 rounded-xl text-white text-sm font-semibold transition-all btn-3d-primary">
               {entrega.status === 'erro_correcao' ? 'Tentar Correção Novamente' : 'Corrigir com IA'}
             </button>
           )}
 
-          {/* Resposta do aluno */}
-          <div>
-            <h4 className="text-xs font-semibold text-ink-950 uppercase tracking-wider mb-2">Resposta</h4>
-            <div className="bg-ink-700 border border-ink-600 rounded-xl p-4">
-              <p className="text-sm text-slate-500 leading-relaxed whitespace-pre-wrap">
-                {entrega.respostaTexto || '(sem resposta textual)'}
-              </p>
-            </div>
-          </div>
-
-          {/* Feedback da IA */}
-          {entrega.feedback && (
+          {/* Resultados por questão (novo formato) */}
+          {questoes && resultados ? (
             <div>
-              <h4 className="text-xs font-semibold text-ink-950 uppercase tracking-wider mb-2">Feedback da IA</h4>
-              <div className="bg-violet-50 border border-violet-100 rounded-xl p-4">
-                <p className="text-sm text-slate-500 leading-relaxed whitespace-pre-wrap">{entrega.feedback}</p>
-                {entrega.modeloIA && (
-                  <p className="text-[10px] text-slate-400 mt-2">Modelo: {entrega.modeloIA}</p>
-                )}
+              <h4 className="text-xs font-semibold text-ink-950 uppercase tracking-wider mb-2">Questões</h4>
+              <div className="space-y-3">
+                {questoes.map((q, i) => {
+                  const res = resultados[q.id];
+                  const resp = entrega.respostas?.[q.id]?.resposta;
+                  return (
+                    <div key={q.id} className="bg-ink-700 border border-ink-600 rounded-xl p-3">
+                      <div className="flex items-center gap-2 mb-2">
+                        <span className={`w-5 h-5 rounded-full text-white text-[10px] font-bold flex items-center justify-center flex-shrink-0 ${q.tipo === 'objetiva' ? 'bg-blue-500' : 'bg-violet-500'}`}>{i + 1}</span>
+                        <span className="text-xs text-ink-950 flex-1 truncate">{q.enunciado?.slice(0, 70)}{q.enunciado?.length > 70 ? '…' : ''}</span>
+                        {res && (
+                          <span className={`text-xs font-mono font-bold tabular-nums flex-shrink-0 ${res.notaObtida >= res.notaMaxima ? 'text-green-600' : res.notaObtida > 0 ? 'text-amber-500' : 'text-red-500'}`}>
+                            {res.notaObtida.toFixed(1).replace('.', ',')} / {res.notaMaxima.toFixed(1).replace('.', ',')}
+                          </span>
+                        )}
+                      </div>
+
+                      {/* Resposta do aluno */}
+                      {resp && (
+                        <div className="bg-white rounded-lg p-2 border border-ink-600 mb-2">
+                          {q.tipo === 'objetiva' ? (
+                            <p className="text-xs text-ink-950">
+                              Marcou: <span className="font-bold">{resp}</span>
+                              {q.alternativas?.find(a => a.id === resp)?.texto && (
+                                <span className="text-slate-400 ml-1">— {q.alternativas.find(a => a.id === resp).texto}</span>
+                              )}
+                            </p>
+                          ) : (
+                            <p className="text-xs text-slate-500 whitespace-pre-wrap leading-relaxed">{resp}</p>
+                          )}
+                        </div>
+                      )}
+
+                      {/* Resultado / feedback */}
+                      {res && (
+                        <>
+                          {q.tipo === 'objetiva' && (
+                            <p className={`text-xs ${res.correto ? 'text-green-600' : 'text-red-500'}`}>
+                              {res.correto ? '✓ Correta' : `✗ Incorreta — gabarito: ${res.feedback}`}
+                            </p>
+                          )}
+                          {q.tipo === 'discursiva' && res.feedback && (
+                            <p className="text-xs text-slate-500 leading-relaxed">{res.feedback}</p>
+                          )}
+                        </>
+                      )}
+
+                      {!res && <p className="text-xs text-slate-400 italic">Ainda não corrigida</p>}
+                    </div>
+                  );
+                })}
               </div>
             </div>
-          )}
+          ) : (
+            /* Legado: resposta única + feedback */
+            <>
+              <div>
+                <h4 className="text-xs font-semibold text-ink-950 uppercase tracking-wider mb-2">Resposta</h4>
+                <div className="bg-ink-700 border border-ink-600 rounded-xl p-4">
+                  <p className="text-sm text-slate-500 leading-relaxed whitespace-pre-wrap">
+                    {entrega.respostaTexto || '(sem resposta textual)'}
+                  </p>
+                </div>
+              </div>
 
-          {/* Critérios */}
-          {entrega.criterios && entrega.criterios.length > 0 && (
-            <div>
-              <h4 className="text-xs font-semibold text-ink-950 uppercase tracking-wider mb-2">Critérios</h4>
-              <div className="bg-ink-700 border border-ink-600 rounded-xl divide-y divide-ink-600">
-                {entrega.criterios.map((c, i) => (
-                  <div key={i} className="flex items-center justify-between px-4 py-3">
-                    <span className="text-sm text-slate-500">{c.nome}</span>
-                    <span className="text-xs font-mono text-ink-950 tabular-nums">
-                      {c.pontos_obtidos}/{c.pontos_maximos}
-                    </span>
+              {entrega.feedback && (
+                <div>
+                  <h4 className="text-xs font-semibold text-ink-950 uppercase tracking-wider mb-2">Feedback da IA</h4>
+                  <div className="bg-violet-50 border border-violet-100 rounded-xl p-4">
+                    <p className="text-sm text-slate-500 leading-relaxed whitespace-pre-wrap">{entrega.feedback}</p>
                   </div>
-                ))}
-              </div>
-            </div>
+                </div>
+              )}
+
+              {entrega.criterios?.length > 0 && (
+                <div>
+                  <h4 className="text-xs font-semibold text-ink-950 uppercase tracking-wider mb-2">Critérios</h4>
+                  <div className="bg-ink-700 border border-ink-600 rounded-xl divide-y divide-ink-600">
+                    {entrega.criterios.map((c, i) => (
+                      <div key={i} className="flex items-center justify-between px-4 py-3">
+                        <span className="text-sm text-slate-500">{c.nome}</span>
+                        <span className="text-xs font-mono text-ink-950 tabular-nums">{c.pontos_obtidos}/{c.pontos_maximos}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </>
           )}
         </div>
       </div>

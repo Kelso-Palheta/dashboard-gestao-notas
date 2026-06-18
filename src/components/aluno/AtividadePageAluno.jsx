@@ -13,7 +13,7 @@ export default function AtividadePageAluno() {
   const [searchParams] = useSearchParams();
   const token = searchParams.get('token');
 
-  const [estado, setEstado] = useState('carregando'); // carregando | form | confirmacao | feedback | erro
+  const [estado, setEstado] = useState('carregando');
   const [erroTipo, setErroTipo] = useState('token_invalido');
   const [atividade, setAtividade] = useState(null);
   const [alunoInfo, setAlunoInfo] = useState(null);
@@ -21,17 +21,11 @@ export default function AtividadePageAluno() {
   const [enviando, setEnviando] = useState(false);
 
   useEffect(() => {
-    if (!token) {
-      setErroTipo('token_invalido');
-      setEstado('erro');
-      return;
-    }
+    if (!token) { setErroTipo('token_invalido'); setEstado('erro'); return; }
 
     const decoded = decodeToken(token);
     if (!decoded || decoded.activityId !== activityId) {
-      setErroTipo('token_invalido');
-      setEstado('erro');
-      return;
+      setErroTipo('token_invalido'); setEstado('erro'); return;
     }
 
     const { alunoId } = decoded;
@@ -42,46 +36,26 @@ export default function AtividadePageAluno() {
       getEntrega(activityId, alunoId)
     ])
       .then(([atv, info, ent]) => {
-        if (!atv) {
-          setErroTipo('atividade_nao_encontrada');
-          setEstado('erro');
-          return;
-        }
+        if (!atv) { setErroTipo('atividade_nao_encontrada'); setEstado('erro'); return; }
 
         setAtividade(atv);
         setAlunoInfo(info);
 
-        // Verifica prazo
         const agora = new Date();
         const prazo = atv.dataEntrega?.toDate?.() || new Date(atv.dataEntrega);
-        if (prazo < agora && !ent) {
-          const dataStr = prazo.toLocaleDateString('pt-BR', {
-            day: '2-digit', month: '2-digit', year: 'numeric',
-            hour: '2-digit', minute: '2-digit'
-          });
-          setErroTipo('prazo_encerrado');
-          setEstado('erro');
-          return;
-        }
+        if (prazo < agora && !ent) { setErroTipo('prazo_encerrado'); setEstado('erro'); return; }
 
         if (ent) {
           setEntrega(ent);
-          if (ent.status === 'corrigido' || ent.status === 'revisado') {
-            setEstado('feedback');
-          } else {
-            setEstado('confirmacao');
-          }
+          setEstado(ent.status === 'corrigido' || ent.status === 'revisado' ? 'feedback' : 'confirmacao');
         } else {
           setEstado('form');
         }
       })
-      .catch(() => {
-        setErroTipo('erro_carregamento');
-        setEstado('erro');
-      });
+      .catch(() => { setErroTipo('erro_carregamento'); setEstado('erro'); });
   }, [activityId, token]);
 
-  const handleSubmit = async (texto) => {
+  const handleSubmit = async (respostaTexto, respostas) => {
     if (!atividade || !alunoInfo) return;
     setEnviando(true);
     try {
@@ -90,7 +64,7 @@ export default function AtividadePageAluno() {
         alunoId: alunoInfo.alunoId,
         turmaId: alunoInfo.turmaId,
         bimestre: atividade.bimestre,
-        respostaTexto: texto
+        ...(respostas != null ? { respostas } : { respostaTexto })
       });
       const ent = await getEntrega(activityId, alunoInfo.alunoId);
       setEntrega(ent);
@@ -113,16 +87,12 @@ export default function AtividadePageAluno() {
 
   if (estado === 'erro') {
     const prazo = atividade?.dataEntrega?.toDate?.();
-    const dataStr = prazo ? prazo.toLocaleDateString('pt-BR', {
-      day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit'
-    }) : null;
+    const dataStr = prazo ? prazo.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : null;
     return <ErroView tipo={erroTipo} dataEntrega={dataStr} />;
   }
 
   const prazo = atividade?.dataEntrega?.toDate?.() || new Date(atividade?.dataEntrega || Date.now());
-  const prazoStr = prazo.toLocaleDateString('pt-BR', {
-    day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit'
-  });
+  const prazoStr = prazo.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
 
   return (
     <div className="min-h-screen bg-white">
@@ -130,40 +100,21 @@ export default function AtividadePageAluno() {
         {/* Header */}
         <div className="mb-6">
           <div className="flex items-center gap-2 mb-1">
-            <div className="w-6 h-6 rounded-lg bg-gradient-to-tr from-violet-700 to-violet-400 flex items-center justify-center text-white text-[10px] font-extrabold">
-              N
-            </div>
+            <div className="w-6 h-6 rounded-lg bg-gradient-to-tr from-violet-700 to-violet-400 flex items-center justify-center text-white text-[10px] font-extrabold">N</div>
             <span className="text-xs text-slate-400 font-medium">Gestão de Notas</span>
           </div>
           <h1 className="text-xl font-bold text-ink-950 mt-2">{atividade?.titulo}</h1>
-          {alunoInfo?.nome && (
-            <p className="text-sm text-slate-400 mt-0.5">Aluno(a): {alunoInfo.nome}</p>
-          )}
+          {alunoInfo?.nome && <p className="text-sm text-slate-400 mt-0.5">Aluno(a): {alunoInfo.nome}</p>}
           <p className="text-xs text-slate-400 mt-1">Prazo: {prazoStr}</p>
-        </div>
-
-        {/* Enunciado */}
-        <div className="bg-ink-700 border border-ink-600 rounded-xl p-4 sm:p-5 mb-6">
-          <p className="text-xs font-semibold text-ink-950 uppercase tracking-wider mb-2">Enunciado</p>
-          <div className="text-sm text-slate-500 leading-relaxed whitespace-pre-wrap">
-            {atividade?.enunciado}
-          </div>
-          {atividade?.notaMaxima && (
-            <p className="text-xs text-slate-400 mt-3">
-              Nota máxima: {atividade.notaMaxima.toFixed(1).replace('.', ',')}
-            </p>
-          )}
         </div>
 
         {/* Conteúdo dinâmico */}
         {estado === 'form' && (
-          <RespostaForm onSubmit={handleSubmit} loading={enviando} />
+          <RespostaForm atividade={atividade} onSubmit={handleSubmit} loading={enviando} />
         )}
-        {estado === 'confirmacao' && (
-          <ConfirmacaoView submittedAt={entrega?.submittedAt} />
-        )}
+        {estado === 'confirmacao' && <ConfirmacaoView submittedAt={entrega?.submittedAt} />}
         {estado === 'feedback' && (
-          <FeedbackView entrega={entrega} notaMaxima={atividade?.notaMaxima || 10} />
+          <FeedbackView entrega={entrega} atividade={atividade} />
         )}
       </div>
     </div>
