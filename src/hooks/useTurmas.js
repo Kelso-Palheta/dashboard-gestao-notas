@@ -78,7 +78,8 @@ export const useTurmas = (initialTurmas, persistTurmas) => {
             return true;
           })
           .map((nome) => ({ id: `al_${genId()}`, nome: cleanNome(nome) }));
-        return { ...t, alunos: [...t.alunos, ...novos] };
+        const alunos = [...t.alunos, ...novos].sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR'));
+        return { ...t, alunos };
       })
     );
   }, []);
@@ -152,7 +153,8 @@ export const useTurmas = (initialTurmas, persistTurmas) => {
       prev.map((t) => {
         if (t.id !== turmaId) return t;
         if (t.alunos.some((a) => normalizeNome(a.nome) === normalizeNome(dados.nome))) return t;
-        return { ...t, alunos: [...t.alunos, novoAluno] };
+        const alunos = [...t.alunos, novoAluno].sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR'));
+        return { ...t, alunos };
       })
     );
     return novoAluno;
