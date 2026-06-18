@@ -14,7 +14,8 @@ export default function App() {
   const { setNota, addAtividade, removeAtividade, updateConfig, clearAtividadesNota, clearAtividadesTurma } = useNotas(setTurmas);
   const atividadesHook = useAtividades(user?.uid);
   const [turmaSelecionada, setTurmaSelecionada] = useState(null);
-  const [bimestre, setBimestre] = useState(1);
+  const [bimestre, setBimestre] = useState(() => Number(localStorage.getItem('bimestre')) || 1);
+  const handleSetBimestre = (b) => { setBimestre(b); localStorage.setItem('bimestre', b); };
 
   const turmaAtual = turmas.find((t) => t.id === turmaSelecionada?.id) || turmas[0] || null;
 
@@ -72,7 +73,7 @@ export default function App() {
         bimestreSelecionado={bimestre}
         user={user}
         onSelectTurma={handleSelectTurma}
-        onSelectBimestre={setBimestre}
+        onSelectBimestre={handleSetBimestre}
         onAddTurma={handleAddTurma}
         onRemoveTurma={handleRemoveTurma}
         onReorderTurmas={setTurmas}
