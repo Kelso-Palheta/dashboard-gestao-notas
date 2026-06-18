@@ -96,7 +96,8 @@ export const TabelaNotas = ({
   onUpdateConfig,
   onClearAtividadesNota,
   onClearAtividadesTurma,
-  onUpdateAluno
+  onUpdateAluno,
+  onAddAlunoManual
 }) => {
   const [selectedIds, setSelectedIds] = useState([]);
   const [showConfig, setShowConfig] = useState(false);
