@@ -3,6 +3,7 @@ import { useEntregas } from '../../hooks/useEntregas';
 import { getAtividade } from '../../firebase/firestore-atividades';
 import { EntregaDrawer } from './EntregaDrawer';
 import { UrlCopyPanel } from './UrlCopyPanel';
+import { AtividadeForm } from './AtividadeForm';
 import { useAuth } from '../../context/AuthContext';
 import { db } from '../../firebase/config';
 import { getDocs, collection } from 'firebase/firestore';
@@ -33,6 +34,7 @@ export const AtividadePainel = ({ atividade, onBack, onDelete, useAtividadesHook
   const [alunosInfo, setAlunosInfo] = useState({});
   const [selectedEntrega, setSelectedEntrega] = useState(null);
   const [showUrls, setShowUrls] = useState(false);
+  const [showEdit, setShowEdit] = useState(false);
   const [filtroStatus, setFiltroStatus] = useState('todos');
 
   // Carrega informações dos tokens (nome dos alunos) para todas as turmas vinculadas
@@ -130,6 +132,12 @@ export const AtividadePainel = ({ atividade, onBack, onDelete, useAtividadesHook
               Corrigir Todas ({pendentes})
             </button>
           )}
+          <button
+            onClick={() => setShowEdit(true)}
+            className="px-3 py-1.5 bg-ink-700 hover:bg-ink-600 border border-ink-600 rounded-lg text-xs text-ink-950 font-medium transition-all"
+          >
+            Editar
+          </button>
           <button
             onClick={() => setShowUrls(true)}
             className="px-3 py-1.5 bg-ink-700 hover:bg-ink-600 border border-ink-600 rounded-lg text-xs text-ink-950 font-medium transition-all"
@@ -292,6 +300,18 @@ export const AtividadePainel = ({ atividade, onBack, onDelete, useAtividadesHook
           activityId={atividade.id}
           alunosInfo={alunosInfo}
           onClose={() => setShowUrls(false)}
+        />
+      )}
+
+      {/* Editar atividade */}
+      {showEdit && (
+        <AtividadeForm
+          turmas={turmas}
+          initialData={atividade}
+          onSave={async (data) => {
+            await useAtividadesHook.updateAtividade(data.id, data);
+          }}
+          onClose={() => setShowEdit(false)}
         />
       )}
     </div>
