@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import DOMPurify from 'dompurify';
 
 const ALTERNATIVAS_IDS = ['A', 'B', 'C', 'D', 'E'];
 
@@ -84,11 +85,28 @@ function QuestaoObjetiva({ numero, questao, resposta, onChange }) {
   );
 }
 
-export const RespostaForm = ({ atividade, onSubmit, loading }) => {
+function TextoApoio({ texto }) {
+  return (
+    <div className="mb-5 bg-slate-50 border border-slate-200 rounded-xl p-4">
+      <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider mb-2">Texto de apoio</p>
+      <div className="prose prose-sm max-w-none text-slate-700"
+        dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(texto.html) }} />
+    </div>
+  );
+}
+
+export const RespostaForm = ({ atividade, onSubmit, loading, textos = [] }) => {
   // Suporta formato novo (questoes[]) e legado (enunciado string)
   const questoes = atividade?.questoes?.length > 0
     ? atividade.questoes
     : [{ id: 'legacy', tipo: 'discursiva', enunciado: atividade?.enunciado || '', notaMaxima: atividade?.notaMaxima || 10, imagens: [] }];
+
+  // Agrupa textos por posição: 'inicio' = antes de todas, número = após questão N
+  const textosPor = {};
+  textos.forEach(t => {
+    const key = t.aposQuestao != null ? t.aposQuestao : 'inicio';
+    (textosPor[key] = textosPor[key] || []).push(t);
+  });
 
   const [respostas, setRespostas] = useState({});
 
@@ -120,11 +138,19 @@ export const RespostaForm = ({ atividade, onSubmit, loading }) => {
         <p className="text-xs text-slate-400">{questoes.length} questão(ões) — {totalRespondidas}/{questoes.length} respondidas</p>
       </div>
 
-      {questoes.map((q, i) =>
-        q.tipo === 'objetiva'
-          ? <QuestaoObjetiva key={q.id} numero={i + 1} questao={q} resposta={respostas[q.id]?.resposta || ''} onChange={(r) => handleChange(q.id, 'objetiva', r)} />
-          : <QuestaoDiscursiva key={q.id} numero={i + 1} questao={q} resposta={respostas[q.id]?.resposta || ''} onChange={(r) => handleChange(q.id, 'discursiva', r)} />
-      )}
+      {/* Textos de apoio do início (antes de todas as questões) */}
+      {(textosPor['inicio'] || []).map(t => <TextoApoio key={t.id} texto={t} />)}
+
+      {questoes.map((q, i) => (
+        <div key={q.id}>
+          {q.tipo === 'objetiva'
+            ? <QuestaoObjetiva numero={i + 1} questao={q} resposta={respostas[q.id]?.resposta || ''} onChange={(r) => handleChange(q.id, 'objetiva', r)} />
+            : <QuestaoDiscursiva numero={i + 1} questao={q} resposta={respostas[q.id]?.resposta || ''} onChange={(r) => handleChange(q.id, 'discursiva', r)} />
+          }
+          {/* Textos de apoio posicionados após esta questão */}
+          {(textosPor[i] || []).map(t => <TextoApoio key={t.id} texto={t} />)}
+        </div>
+      ))}
 
       <button
         type="submit"

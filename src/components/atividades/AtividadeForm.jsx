@@ -242,9 +242,9 @@ export const AtividadeForm = ({ turmas, onSave, onClose, initialData }) => {
     if (initialData?.textoBase?.trim()) return [{ id: genId(), html: initialData.textoBase }];
     return [];
   });
-  const addTextoBase    = () => setTextosBase(prev => [...prev, { id: genId(), html: '' }]);
+  const addTextoBase    = () => setTextosBase(prev => [...prev, { id: genId(), html: '', aposQuestao: null }]);
   const removeTextoBase = (id) => setTextosBase(prev => prev.filter(t => t.id !== id));
-  const updateTextoBase = (id, html) => setTextosBase(prev => prev.map(t => t.id === id ? { ...t, html } : t));
+  const updateTextoBase = (id, field, val) => setTextosBase(prev => prev.map(t => t.id === id ? { ...t, [field]: val } : t));
   const [materialFile, setMaterialFile] = useState(null);
   const [materialTextoExtraido, setMaterialTextoExtraido] = useState(initialData?.materialApoio?.textoExtraido || '');
   const [materialNome, setMaterialNome] = useState(initialData?.materialApoio?.nome || '');
@@ -427,19 +427,30 @@ export const AtividadeForm = ({ turmas, onSave, onClose, initialData }) => {
 
             <div className="space-y-3">
               {textosBase.map((t, i) => (
-                <div key={t.id}>
-                  {textosBase.length > 1 && (
-                    <div className="flex items-center justify-between mb-1">
-                      <span className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">Texto {i + 1}</span>
+                <div key={t.id} className="border border-ink-600 rounded-xl p-3 bg-ink-800">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">Texto {i + 1}</span>
+                    <div className="flex items-center gap-2">
+                      {/* Seletor de posição */}
+                      <select
+                        value={t.aposQuestao ?? ''}
+                        onChange={(e) => updateTextoBase(t.id, 'aposQuestao', e.target.value === '' ? null : Number(e.target.value))}
+                        className="text-[11px] bg-white border border-ink-600 rounded-lg px-2 py-1 text-ink-950 outline-none focus:ring-1 focus:ring-violet-400/50"
+                      >
+                        <option value="">Início da atividade</option>
+                        {questoes.map((_, qi) => (
+                          <option key={qi} value={qi}>Após questão {qi + 1}</option>
+                        ))}
+                      </select>
                       <button type="button" onClick={() => removeTextoBase(t.id)}
-                        className="text-xs text-slate-400 hover:text-red-500 transition-colors px-1">
+                        className="text-xs text-slate-400 hover:text-red-500 transition-colors">
                         Remover
                       </button>
                     </div>
-                  )}
+                  </div>
                   <RichTextEditor
                     value={t.html}
-                    onChange={(html) => updateTextoBase(t.id, html)}
+                    onChange={(html) => updateTextoBase(t.id, 'html', html)}
                     placeholder="Cole aqui o texto base, trecho do livro ou contextualização para o aluno..."
                     rows={5}
                   />

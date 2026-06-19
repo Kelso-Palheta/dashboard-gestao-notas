@@ -50,11 +50,18 @@ export function RichTextEditor({ value, onChange, placeholder, rows = 6 }) {
           if (file) { insertImageFile(file, editorRef); return true; }
         }
 
-        // Rich HTML (Word, Google Docs) → TipTap cuida
-        const richHtml = event.clipboardData?.getData('text/html');
-        if (richHtml && richHtml.trim()) return false;
+        // HTML com formatação real (Word, Google Docs) → TipTap cuida
+        // PDFs também geram text/html mas apenas com <br> — não é rico
+        const richHtml = event.clipboardData?.getData('text/html') || '';
+        const isTrulyRich = richHtml && (
+          richHtml.includes('docs-internal-guid') ||   // Google Docs
+          richHtml.includes('mso-') ||                  // Microsoft Word
+          richHtml.includes('urn:schemas-microsoft') || // Word XML
+          richHtml.includes('xmlns:o=')                 // Office namespace
+        );
+        if (isTrulyRich) return false;
 
-        // Texto puro → limpa artefatos de PDF
+        // Texto puro OU HTML de PDF → limpa artefatos de quebra de linha
         const plain = event.clipboardData?.getData('text/plain');
         if (!plain) return false;
         const cleaned = cleanPdfText(plain);
