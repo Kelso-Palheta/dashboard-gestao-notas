@@ -124,3 +124,32 @@ export const corrigirAtividade = async (params) => {
   if (params.questoes) return corrigirMultiQuestao(params);
   return corrigirLegacy(params);
 };
+
+export async function sugerirRubrica(questao, materialTexto = '') {
+  const apiKey = import.meta.env.VITE_MARITACA_API_KEY;
+  if (!apiKey) throw new Error('VITE_MARITACA_API_KEY não configurada no .env');
+
+  let prompt = `Você é um professor experiente do Ensino Médio criando a rubrica de correção para uma questão discursiva.
+
+ENUNCIADO DA QUESTÃO:
+${questao.enunciado}`;
+
+  if (materialTexto?.trim()) {
+    prompt += `\n\nMATERIAL DE APOIO (use como base dos critérios):\n${materialTexto.slice(0, 4000)}`;
+  }
+
+  prompt += `
+
+NOTA MÁXIMA: ${questao.notaMaxima} pontos
+
+Crie de 3 a 5 critérios de avaliação claros e objetivos. A soma deve ser exatamente ${questao.notaMaxima} pontos.
+
+Retorne SOMENTE os critérios, sem introdução, sem markdown. Use exatamente este formato:
+X.X pts — Nome: Descrição do que o aluno deve demonstrar para obter estes pontos.
+
+Exemplo:
+0.5 pts — Identificação do tema: O aluno identifica corretamente o tema central e demonstra entender o contexto.
+0.8 pts — Argumentação: Apresenta ao menos dois argumentos fundamentados no conteúdo estudado.`;
+
+  return (await callAI([{ type: 'text', text: prompt }], apiKey)).trim();
+}

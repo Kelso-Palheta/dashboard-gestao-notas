@@ -2,6 +2,8 @@ import { useState } from 'react';
 import { extractTextFromPDF } from '../../utils/pdfExtractor';
 import { imageToBase64 } from '../../utils/storageUtils';
 import { RichTextEditor } from '../ui/RichTextEditor';
+import { cleanPdfText } from '../../utils/textUtils';
+import { sugerirRubrica } from '../../utils/correcaoIA';
 
 const BIMESTRES = [1, 2, 3, 4];
 const genId = () => `${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 6)}`;
@@ -19,8 +21,37 @@ const novaQuestao = (tipo = 'discursiva') => ({
   imagensLocais: [] // { file, preview } — antes de upload
 });
 
-function QuestaoEditor({ questao, index, total, onChange, onRemove }) {
+function QuestaoEditor({ questao, index, total, onChange, onRemove, materialTexto }) {
   const update = (field, value) => onChange({ ...questao, [field]: value });
+  const [sugerindo, setSugerindo] = useState(false);
+
+  const handleSugerirRubrica = async () => {
+    if (!questao.enunciado.trim()) {
+      alert('Preencha o enunciado da questão antes de sugerir a rubrica.');
+      return;
+    }
+    setSugerindo(true);
+    try {
+      const rubrica = await sugerirRubrica(questao, materialTexto || '');
+      update('rubrica', rubrica);
+    } catch (err) {
+      alert('Erro ao gerar rubrica: ' + err.message);
+    } finally {
+      setSugerindo(false);
+    }
+  };
+
+  const handleEnunciadoPaste = (e) => {
+    const plain = e.clipboardData?.getData('text/plain');
+    if (!plain) return;
+    e.preventDefault();
+    const cleaned = cleanPdfText(plain);
+    const { selectionStart: start, selectionEnd: end } = e.target;
+    update('enunciado', questao.enunciado.slice(0, start) + cleaned + questao.enunciado.slice(end));
+    requestAnimationFrame(() => {
+      e.target.setSelectionRange(start + cleaned.length, start + cleaned.length);
+    });
+  };
 
   const updateAlternativa = (altId, texto) => {
     onChange({ ...questao, alternativas: questao.alternativas.map(a => a.id === altId ? { ...a, texto } : a) });
@@ -78,6 +109,7 @@ function QuestaoEditor({ questao, index, total, onChange, onRemove }) {
       <textarea
         value={questao.enunciado}
         onChange={(e) => update('enunciado', e.target.value)}
+        onPaste={handleEnunciadoPaste}
         placeholder="Enunciado da questão..."
         rows={3}
         className="w-full bg-ink-700 border border-ink-600 rounded-xl px-3 py-2.5 text-sm text-ink-950 placeholder-slate-400 outline-none focus:bg-white focus:ring-1 focus:ring-violet-400/50 transition-all resize-y mb-3"
@@ -109,13 +141,30 @@ function QuestaoEditor({ questao, index, total, onChange, onRemove }) {
       {/* Discursiva: rubrica */}
       {questao.tipo === 'discursiva' && (
         <div>
-          <label className="block text-xs font-semibold text-amber-600 mb-1">
-            🔒 Rubrica de correção <span className="text-slate-400 font-normal">(confidencial — só você e a IA verão)</span>
-          </label>
+          <div className="flex items-center justify-between mb-1">
+            <label className="text-xs font-semibold text-amber-600">
+              Rubrica de correção <span className="text-slate-400 font-normal">(confidencial — só você e a IA verão)</span>
+            </label>
+            <button
+              type="button"
+              onClick={handleSugerirRubrica}
+              disabled={sugerindo}
+              className="flex items-center gap-1 px-2.5 py-1 bg-violet-50 hover:bg-violet-100 disabled:bg-slate-100 border border-violet-200 disabled:border-slate-200 rounded-lg text-[11px] font-semibold text-violet-600 disabled:text-slate-400 transition-all"
+            >
+              {sugerindo ? (
+                <>
+                  <svg className="animate-spin w-3 h-3" viewBox="0 0 24 24" fill="none"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>
+                  Gerando...
+                </>
+              ) : (
+                <>✦ Sugerir com IA</>
+              )}
+            </button>
+          </div>
           <textarea
             value={questao.rubrica}
             onChange={(e) => update('rubrica', e.target.value)}
-            placeholder="Critérios de correção, pontos por seção, o que esperar na resposta ideal..."
+            placeholder="Critérios de correção, pontos por seção, o que esperar na resposta ideal... ou clique em &quot;Sugerir com IA&quot; acima."
             rows={3}
             className="w-full bg-amber-50 border border-amber-200 rounded-xl px-3 py-2.5 text-sm text-ink-950 placeholder-slate-400 outline-none focus:bg-white focus:ring-1 focus:ring-amber-400/50 transition-all resize-y"
           />
@@ -409,6 +458,7 @@ export const AtividadeForm = ({ turmas, onSave, onClose, initialData }) => {
                 total={questoes.length}
                 onChange={(novaQ) => updateQuestao(i, novaQ)}
                 onRemove={() => removeQuestao(i)}
+                materialTexto={materialTextoExtraido}
               />
             ))}
           </div>

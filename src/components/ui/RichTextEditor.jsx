@@ -1,6 +1,8 @@
+import { useRef, useEffect } from 'react';
 import { useEditor, EditorContent } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import Underline from '@tiptap/extension-underline';
+import { cleanPdfText } from '../../utils/textUtils';
 
 const ToolbarBtn = ({ onClick, active, title, children }) => (
   <button
@@ -16,19 +18,46 @@ const ToolbarBtn = ({ onClick, active, title, children }) => (
 );
 
 export function RichTextEditor({ value, onChange, placeholder, rows = 6 }) {
+  const editorRef = useRef(null);
+
   const editor = useEditor({
     extensions: [
       StarterKit.configure({ codeBlock: false, blockquote: false, code: false, horizontalRule: false }),
       Underline,
     ],
     content: value || '',
-    onUpdate: ({ editor }) => onChange(editor.getHTML()),
+    onCreate: ({ editor }) => { editorRef.current = editor; },
+    onUpdate: ({ editor }) => { editorRef.current = editor; onChange(editor.getHTML()); },
     editorProps: {
       attributes: {
-        class: 'outline-none min-h-[' + (rows * 1.6) + 'rem] prose prose-sm max-w-none text-sm text-slate-800 leading-relaxed',
+        class: 'outline-none min-h-[' + (rows * 1.6) + 'rem] prose prose-sm max-w-none text-sm text-[#111118] leading-relaxed',
+      },
+      handlePaste: (view, event) => {
+        // If clipboard has rich HTML (Word, Google Docs), let TipTap handle normally
+        const richHtml = event.clipboardData?.getData('text/html');
+        if (richHtml && richHtml.trim()) return false;
+
+        const plain = event.clipboardData?.getData('text/plain');
+        if (!plain) return false;
+
+        // PDF paste: join broken lines within paragraphs, preserve paragraph breaks
+        const cleaned = cleanPdfText(plain);
+        const insertHtml = cleaned.split('\n\n').map(p => `<p>${p}</p>`).join('');
+        if (editorRef.current) {
+          editorRef.current.chain().insertContent(insertHtml).run();
+          return true;
+        }
+        return false;
       },
     },
   });
+
+  // Garante que o conteúdo inicial carregue no modo edição
+  useEffect(() => {
+    if (editor && value && editor.isEmpty) {
+      editor.commands.setContent(value, false);
+    }
+  }, [editor]); // eslint-disable-line react-hooks/exhaustive-deps
 
   if (!editor) return null;
 
