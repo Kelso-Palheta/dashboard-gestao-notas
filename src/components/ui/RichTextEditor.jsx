@@ -2,7 +2,9 @@ import { useRef, useEffect } from 'react';
 import { useEditor, EditorContent } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import Underline from '@tiptap/extension-underline';
+import Image from '@tiptap/extension-image';
 import { cleanPdfText } from '../../utils/textUtils';
+import { imageToBase64 } from '../../utils/storageUtils';
 
 const ToolbarBtn = ({ onClick, active, title, children }) => (
   <button
@@ -17,6 +19,12 @@ const ToolbarBtn = ({ onClick, active, title, children }) => (
   </button>
 );
 
+async function insertImageFile(file, editorRef) {
+  if (!file || !editorRef.current) return;
+  const base64 = await imageToBase64(file, 1200, 0.8);
+  editorRef.current.chain().focus().setImage({ src: base64 }).run();
+}
+
 export function RichTextEditor({ value, onChange, placeholder, rows = 6 }) {
   const editorRef = useRef(null);
 
@@ -24,6 +32,7 @@ export function RichTextEditor({ value, onChange, placeholder, rows = 6 }) {
     extensions: [
       StarterKit.configure({ codeBlock: false, blockquote: false, code: false, horizontalRule: false }),
       Underline,
+      Image.configure({ allowBase64: true, inline: false }),
     ],
     content: value || '',
     onCreate: ({ editor }) => { editorRef.current = editor; },
@@ -33,14 +42,21 @@ export function RichTextEditor({ value, onChange, placeholder, rows = 6 }) {
         class: 'outline-none min-h-[' + (rows * 1.6) + 'rem] prose prose-sm max-w-none text-sm text-[#111118] leading-relaxed',
       },
       handlePaste: (view, event) => {
-        // If clipboard has rich HTML (Word, Google Docs), let TipTap handle normally
+        // Imagem no clipboard (Ctrl+V de screenshot, print screen, etc.)
+        const items = Array.from(event.clipboardData?.items || []);
+        const imageItem = items.find(item => item.type.startsWith('image/'));
+        if (imageItem) {
+          const file = imageItem.getAsFile();
+          if (file) { insertImageFile(file, editorRef); return true; }
+        }
+
+        // Rich HTML (Word, Google Docs) → TipTap cuida
         const richHtml = event.clipboardData?.getData('text/html');
         if (richHtml && richHtml.trim()) return false;
 
+        // Texto puro → limpa artefatos de PDF
         const plain = event.clipboardData?.getData('text/plain');
         if (!plain) return false;
-
-        // PDF paste: join broken lines within paragraphs, preserve paragraph breaks
         const cleaned = cleanPdfText(plain);
         const insertHtml = cleaned.split('\n\n').map(p => `<p>${p}</p>`).join('');
         if (editorRef.current) {
@@ -49,10 +65,15 @@ export function RichTextEditor({ value, onChange, placeholder, rows = 6 }) {
         }
         return false;
       },
+      handleDrop: (view, event) => {
+        const files = Array.from(event.dataTransfer?.files || []);
+        const imgFile = files.find(f => f.type.startsWith('image/'));
+        if (imgFile) { event.preventDefault(); insertImageFile(imgFile, editorRef); return true; }
+        return false;
+      },
     },
   });
 
-  // Garante que o conteúdo inicial carregue no modo edição
   useEffect(() => {
     if (editor && value && editor.isEmpty) {
       editor.commands.setContent(value, false);
@@ -95,14 +116,21 @@ export function RichTextEditor({ value, onChange, placeholder, rows = 6 }) {
             ))}
           </div>
         ))}
-        <div className="ml-auto">
-          <ToolbarBtn
-            onClick={() => editor.chain().focus().clearNodes().unsetAllMarks().run()}
-            title="Limpar formatação"
-          >
+        <div className="ml-auto flex items-center gap-0.5">
+          {/* Inserir imagem via seletor de arquivo */}
+          <label title="Inserir imagem" className="w-7 h-7 flex items-center justify-center rounded cursor-pointer text-slate-500 hover:bg-slate-100 hover:text-ink-950 transition-colors">
             <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <path d="M20 20H7L3 16l10-10 7 7-1.5 1.5"/>
-              <path d="M6.5 17.5l5-5"/>
+              <rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/>
+            </svg>
+            <input type="file" accept="image/*" className="hidden" onChange={(e) => {
+              const file = e.target.files?.[0];
+              if (file) insertImageFile(file, editorRef);
+              e.target.value = '';
+            }} />
+          </label>
+          <ToolbarBtn onClick={() => editor.chain().focus().clearNodes().unsetAllMarks().run()} title="Limpar formatação">
+            <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M20 20H7L3 16l10-10 7 7-1.5 1.5"/><path d="M6.5 17.5l5-5"/>
             </svg>
           </ToolbarBtn>
         </div>

@@ -237,7 +237,14 @@ export const AtividadeForm = ({ turmas, onSave, onClose, initialData }) => {
       ? initialData.questoes.map(q => ({ ...q, imagensLocais: [] }))
       : [novaQuestao('discursiva')]
   );
-  const [textoBase, setTextoBase] = useState(initialData?.textoBase || '');
+  const [textosBase, setTextosBase] = useState(() => {
+    if (initialData?.textosBase?.length > 0) return initialData.textosBase;
+    if (initialData?.textoBase?.trim()) return [{ id: genId(), html: initialData.textoBase }];
+    return [];
+  });
+  const addTextoBase    = () => setTextosBase(prev => [...prev, { id: genId(), html: '' }]);
+  const removeTextoBase = (id) => setTextosBase(prev => prev.filter(t => t.id !== id));
+  const updateTextoBase = (id, html) => setTextosBase(prev => prev.map(t => t.id === id ? { ...t, html } : t));
   const [materialFile, setMaterialFile] = useState(null);
   const [materialTextoExtraido, setMaterialTextoExtraido] = useState(initialData?.materialApoio?.textoExtraido || '');
   const [materialNome, setMaterialNome] = useState(initialData?.materialApoio?.nome || '');
@@ -331,7 +338,7 @@ export const AtividadeForm = ({ turmas, onSave, onClose, initialData }) => {
         turmaIds,
         notaMaxima: Math.round(notaTotalMaxima * 100) / 100,
         dataEntrega: new Date(dataEntrega),
-        ...(textoBase.trim() ? { textoBase: textoBase.trim() } : {}),
+        textosBase: textosBase.filter(t => t.html.trim() && t.html !== '<p></p>'),
         questoes: questoesFinais,
         ...(materialApoio ? { materialApoio } : {}),
         alunosPorTurma
@@ -399,17 +406,46 @@ export const AtividadeForm = ({ turmas, onSave, onClose, initialData }) => {
             </div>
           </div>
 
-          {/* Texto base para o aluno */}
+          {/* Textos de apoio para o aluno */}
           <div>
-            <label className="block text-xs font-semibold text-ink-950 mb-1">
-              Texto de apoio <span className="text-slate-400 font-normal">(visível para o aluno — cole com formatação)</span>
-            </label>
-            <RichTextEditor
-              value={textoBase}
-              onChange={setTextoBase}
-              placeholder="Cole aqui o texto base, trecho do livro, enunciado geral ou qualquer contextualização que o aluno deve ler antes de responder..."
-              rows={6}
-            />
+            <div className="flex items-center justify-between mb-2">
+              <label className="text-xs font-semibold text-ink-950">
+                Texto de apoio <span className="text-slate-400 font-normal">(visível para o aluno)</span>
+              </label>
+              <button type="button" onClick={addTextoBase}
+                className="flex items-center gap-1 px-2.5 py-1 bg-violet-50 hover:bg-violet-100 border border-violet-200 rounded-lg text-[11px] font-semibold text-violet-600 transition-all">
+                + Adicionar texto
+              </button>
+            </div>
+
+            {textosBase.length === 0 && (
+              <button type="button" onClick={addTextoBase}
+                className="w-full py-4 border border-dashed border-ink-600 rounded-xl text-xs text-slate-400 hover:text-violet-500 hover:border-violet-300 transition-colors">
+                + Clique para adicionar um texto de apoio
+              </button>
+            )}
+
+            <div className="space-y-3">
+              {textosBase.map((t, i) => (
+                <div key={t.id}>
+                  {textosBase.length > 1 && (
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">Texto {i + 1}</span>
+                      <button type="button" onClick={() => removeTextoBase(t.id)}
+                        className="text-xs text-slate-400 hover:text-red-500 transition-colors px-1">
+                        Remover
+                      </button>
+                    </div>
+                  )}
+                  <RichTextEditor
+                    value={t.html}
+                    onChange={(html) => updateTextoBase(t.id, html)}
+                    placeholder="Cole aqui o texto base, trecho do livro ou contextualização para o aluno..."
+                    rows={5}
+                  />
+                </div>
+              ))}
+            </div>
           </div>
 
           {/* Material de apoio para a IA */}
