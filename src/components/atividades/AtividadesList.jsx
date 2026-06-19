@@ -66,8 +66,9 @@ export const AtividadesList = ({
     return (
       <AtividadePainel
         atividade={painelAtividade}
-        onBack={() => setPainelAtividade(null)}
+        onBack={() => { setPainelAtividade(null); if (turma?.id) loadAtividades(turma.id); }}
         onDelete={handleDelete}
+        onAtividadeUpdated={(atv) => { setPainelAtividade(atv); if (turma?.id) loadAtividades(turma.id); }}
         useAtividadesHook={useAtividadesHook}
         turmas={turmas}
       />

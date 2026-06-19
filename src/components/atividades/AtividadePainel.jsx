@@ -28,8 +28,9 @@ const StatusBadge = ({ status }) => (
   </span>
 );
 
-export const AtividadePainel = ({ atividade, onBack, onDelete, useAtividadesHook, turmas = [] }) => {
+export const AtividadePainel = ({ atividade: atividadeInicial, onBack, onDelete, onAtividadeUpdated, useAtividadesHook, turmas = [] }) => {
   const { user } = useAuth();
+  const [atividade, setAtividade] = useState(atividadeInicial);
   const { entregas, corrigindo, overrideNota, corrigirEntrega } = useEntregas(atividade.id);
   const [alunosInfo, setAlunosInfo] = useState({});
   const [selectedEntrega, setSelectedEntrega] = useState(null);
@@ -310,6 +311,11 @@ export const AtividadePainel = ({ atividade, onBack, onDelete, useAtividadesHook
           initialData={atividade}
           onSave={async (data) => {
             await useAtividadesHook.updateAtividade(data.id, data);
+            const fresh = await getAtividade(data.id);
+            if (fresh) {
+              setAtividade(fresh);
+              onAtividadeUpdated?.(fresh);
+            }
           }}
           onClose={() => setShowEdit(false)}
         />
