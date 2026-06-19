@@ -65,8 +65,11 @@ function QuestaoEditor({ questao, index, total, onChange, onRemove, materialText
   };
 
   const removeImagem = (i) => {
-    const novas = questao.imagensLocais.filter((_, idx) => idx !== i);
-    onChange({ ...questao, imagensLocais: novas });
+    onChange({ ...questao, imagensLocais: questao.imagensLocais.filter((_, idx) => idx !== i) });
+  };
+
+  const removeImagemSalva = (i) => {
+    onChange({ ...questao, imagens: (questao.imagens || []).filter((_, idx) => idx !== i) });
   };
 
   return (
@@ -117,11 +120,23 @@ function QuestaoEditor({ questao, index, total, onChange, onRemove, materialText
 
       {/* Imagens */}
       <div className="mb-3">
-        {questao.imagensLocais.length > 0 && (
+        {((questao.imagens || []).length > 0 || questao.imagensLocais.length > 0) && (
           <div className="flex flex-wrap gap-2 mb-2">
+            {/* Imagens já salvas (base64) */}
+            {(questao.imagens || []).map((img, i) => (
+              <div key={`s-${i}`} className="relative group">
+                <img src={img.base64} alt="" className="h-20 w-auto rounded-lg border border-ink-600 object-cover" />
+                <button
+                  type="button"
+                  onClick={() => removeImagemSalva(i)}
+                  className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-red-500 text-white rounded-full text-xs hidden group-hover:flex items-center justify-center leading-none"
+                >&times;</button>
+              </div>
+            ))}
+            {/* Imagens novas ainda não salvas */}
             {questao.imagensLocais.map((img, i) => (
-              <div key={i} className="relative group">
-                <img src={img.preview} alt="" className="h-20 w-auto rounded-lg border border-ink-600 object-cover" />
+              <div key={`n-${i}`} className="relative group">
+                <img src={img.preview} alt="" className="h-20 w-auto rounded-lg border border-ink-600 object-cover opacity-75" />
                 <button
                   type="button"
                   onClick={() => removeImagem(i)}
