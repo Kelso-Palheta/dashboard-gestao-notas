@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useParams, useSearchParams } from 'react-router-dom';
+import DOMPurify from 'dompurify';
 import { decodeToken } from '../../utils/tokenUtils';
 import { getAtividadePublica, getEntrega, submitEntrega } from '../../firebase/firestore-aluno';
 import { getTokenInfo } from '../../firebase/firestore-atividades';
@@ -112,7 +113,10 @@ export default function AtividadePageAluno() {
         {atividade?.textoBase && estado === 'form' && (
           <div className="mb-6 bg-slate-50 border border-slate-200 rounded-xl p-4">
             <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider mb-2">Material de apoio</p>
-            <p className="text-sm text-slate-700 leading-relaxed whitespace-pre-wrap">{atividade.textoBase}</p>
+            <div
+              className="prose prose-sm max-w-none text-slate-700"
+              dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(atividade.textoBase) }}
+            />
           </div>
         )}
 

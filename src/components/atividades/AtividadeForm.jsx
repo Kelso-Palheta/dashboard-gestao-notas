@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { extractTextFromPDF } from '../../utils/pdfExtractor';
 import { imageToBase64 } from '../../utils/storageUtils';
+import { RichTextEditor } from '../ui/RichTextEditor';
 
 const BIMESTRES = [1, 2, 3, 4];
 const genId = () => `${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 6)}`;
@@ -337,14 +338,13 @@ export const AtividadeForm = ({ turmas, onSave, onClose, initialData }) => {
           {/* Texto base para o aluno */}
           <div>
             <label className="block text-xs font-semibold text-ink-950 mb-1">
-              Texto de apoio <span className="text-slate-400 font-normal">(visível para o aluno)</span>
+              Texto de apoio <span className="text-slate-400 font-normal">(visível para o aluno — cole com formatação)</span>
             </label>
-            <textarea
+            <RichTextEditor
               value={textoBase}
-              onChange={(e) => setTextoBase(e.target.value)}
+              onChange={setTextoBase}
               placeholder="Cole aqui o texto base, trecho do livro, enunciado geral ou qualquer contextualização que o aluno deve ler antes de responder..."
-              rows={5}
-              className="w-full bg-ink-700 border border-ink-600 rounded-xl px-3 py-2.5 text-sm text-ink-950 placeholder-slate-400 outline-none focus:bg-white focus:ring-1 focus:ring-violet-400/50 transition-all resize-y"
+              rows={6}
             />
           </div>
 
